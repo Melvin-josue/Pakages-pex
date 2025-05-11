@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Nombre del paquete que se pasa como argumento
+PACKAGE=$1
+URL="https://tuusuario.github.io/pexpkgs/$PACKAGE.tar.gz"
+DEST="~/usr/bin"  # Directorio donde se instalarán los paquetes
+
+# Verificamos si el paquete existe en la URL
+if ! curl --silent --head --fail "$URL" > /dev/null; then
+  echo ""
+  exit 1
+fi
+
+# Usamos aria2c para descargar el paquete
+echo "Descargando $PACKAGE..."
+aria2c -x 16 -s 16 -k 1M "$URL"
+
+# Extraemos el paquete en /usr/bin/
+echo "Extrayendo el paquete..."
+tar -xvzf "$PACKAGE.tar.gz" -C "$DEST"
+
+# Hacemos el archivo extraído ejecutable
+chmod +x "$DEST/$PACKAGE"  # Aseguramos que el archivo sea ejecutable
+
+# Limpiamos el archivo comprimido
+rm "$PACKAGE.tar.gz"
+
+# Confirmación de instalación
+echo "$PACKAGE ha sido instalado y ahora está disponible globalmente."
