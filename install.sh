@@ -1,14 +1,7 @@
-#!/bin/bash
+# !/bin/bash
 
-finish=\e[1;80m
-start=\e[1;10m
-reset=\e[0
+cd
 
-echo "${start}Coecting....${reset}"
+cp pex /bin/ 
 
-connect ()
-{
-  if [[ !ping -c3 google.com ]];the
-    
-  fi
-}
+rm -rf  ./p

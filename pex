@@ -1,29 +1,113 @@
 #!/bin/bash
 
-# Nombre del paquete que se pasa como argumento
-PACKAGE=$1
-URL="https://tuusuario.github.io/pexpkgs/$PACKAGE.tar.gz"
-DEST="~/usr/bin"  # Directorio donde se instalarán los paquetes
+# 🎨 Colores
+INIT="\033[1;36m"
+FINISH="\033[1;32m"
+RESET="\033[1;0m"
+RM="\033[1;31m"
 
-# Verificamos si el paquete existe en la URL
-if ! curl --silent --head --fail "$URL" > /dev/null; then
-  echo ""
-  exit 1
-fi
+# 📦 Directorio de instalación real
+DEST="$HOME/usr/bin"
+CACHE="/tmp/pexpkgs"
 
-# Usamos aria2c para descargar el paquete
-echo "Descargando $PACKAGE..."
-aria2c -x 16 -s 16 -k 1M "$URL"
+# 🌐 Repositorio remoto (esto lo vas a cambiar por tu GitHub real)
+REPO_URL="https://tuusuario.github.io/pexpkgs"
 
-# Extraemos el paquete en /usr/bin/
-echo "Extrayendo el paquete..."
-tar -xvzf "$PACKAGE.tar.gz" -C "$DEST"
+# 📘 Ayuda del sistema
+usage() {
+  echo -e "$INIT Pex Manager Packages $RESET"
+  echo -e "Uso: pex <acción> <paquete>"
+  echo -e "Acciones disponibles:"
+  echo "  install <paquete>   Instala un paquete"
+  echo "  remove <paquete>    Elimina un paquete"
+  echo "  search <paquete>    Busca un paquete"
+  echo "  update              Actualiza el índice de paquetes"
+  echo "  list                Lista los paquetes instalados"
+  echo "  help                Muestra esta ayuda"
+}
 
-# Hacemos el archivo extraído ejecutable
-chmod +x "$DEST/$PACKAGE"  # Aseguramos que el archivo sea ejecutable
+# 🔍 Buscar paquete en el índice local
+searcher() {
+  local pkg=$1
+  echo -e "$INIT Buscando '$pkg' en el índice...$RESET"
+  grep -i "$pkg" "$CACHE/index.txt" || echo -e "$RM No encontrado $RESET"
+}
 
-# Limpiamos el archivo comprimido
-rm "$PACKAGE.tar.gz"
+# 📥 Instalador de paquetes
+installer() {
+  local pkg=$1
+  local url="$REPO_URL/$pkg.tar.gz"
+  echo -e "$INIT Descargando paquete '$pkg'...$RESET"
 
-# Confirmación de instalación
-echo "$PACKAGE ha sido instalado y ahora está disponible globalmente."
+  mkdir -p "$DEST" "$CACHE"
+  curl -L "$url" -o "$CACHE/$pkg.tar.gz" || {
+    echo -e "$RM Error al descargar el paquete $RESET"
+    exit 1
+  }
+
+  echo -e "$FINISH Extrayendo e instalando...$RESET"
+  tar -xzf "$CACHE/$pkg.tar.gz" -C "$DEST" || {
+    echo -e "$RM Error al extraer $RESET"
+    exit 1
+  }
+
+  echo -e "$FINISH Paquete '$pkg' instalado con éxito. $RESET"
+}
+
+# 🧼 Eliminador de paquetes
+remover() {
+  local pkg=$1
+  echo -e "$RM Eliminando '$pkg'...$RESET"
+  rm -rf "$DEST/$pkg" && echo -e "$FINISH Paquete eliminado. $RESET"
+}
+
+# 🔄 Actualizador del índice
+updater() {
+  echo -e "$INIT Actualizando índice de paquetes...$RESET"
+  mkdir -p "$CACHE"
+  curl -L "$REPO_URL/index.txt" -o "$CACHE/index.txt" || {
+    echo -e "$RM No se pudo actualizar el índice $RESET"
+    exit 1
+  }
+  echo -e "$FINISH Índice actualizado. $RESET"
+}
+
+# 📂 Listar paquetes instalados
+list_installed() {
+  echo -e "$INIT Paquetes instalados en $DEST:$RESET"
+  ls "$DEST"
+}
+
+# 🧠 Comprobación básica de argumentos
+ACTION=$1
+PACKAGE=$2
+
+[[ -z $ACTION ]] && usage && exit 1
+
+case "$ACTION" in
+  install)
+    [[ -z $PACKAGE ]] && echo -e "$RM Falta el nombre del paquete $RESET" && exit 1
+    installer "$PACKAGE"
+    ;;
+  remove)
+    [[ -z $PACKAGE ]] && echo -e "$RM Falta el nombre del paquete $RESET" && exit 1
+    remover "$PACKAGE"
+    ;;
+  search)
+    [[ -z $PACKAGE ]] && echo -e "$RM Falta el nombre del paquete $RESET" && exit 1
+    searcher "$PACKAGE"
+    ;;
+  update)
+    updater
+    ;;
+  list)
+    list_installed
+    ;;
+  help|--help|-h)
+    usage
+    ;;
+  *)
+    echo -e "$RM Acción no válida '$ACTION' $RESET"
+    usage
+    ;;
+esac
